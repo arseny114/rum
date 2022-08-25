@@ -127,9 +127,6 @@
 #define DATUM_SORT		2
 #define CLUSTER_SORT	3
 
-/* Sort parallel code from state for sort__start probes */
-#define PARALLEL_SORT(state)	((state)->shared == NULL ? 0 : \
-								 (state)->worker >= 0 ? 1 : 2)
 
 /*
  * Initial size of memtuples array.  We're trying to select this size so that
@@ -150,43 +147,6 @@ bool		trace_sort = false;
 bool		optimize_bounded_sort = true;
 #endif
 
-
-/*
- * The objects we actually sort are SortTuple structs.  These contain
- * a pointer to the tuple proper (might be a MinimalTuple or IndexTuple),
- * which is a separate palloc chunk --- we assume it is just one chunk and
- * can be freed by a simple pfree() (except during merge, when we use a
- * simple slab allocator).  SortTuples also contain the tuple's first key
- * column in Datum/nullflag format, and a source/input tape number that
- * tracks which tape each heap element/slot belongs to during merging.
- *
- * Storing the first key column lets us save heap_getattr or index_getattr
- * calls during tuple comparisons.  We could extract and save all the key
- * columns not just the first, but this would increase code complexity and
- * overhead, and wouldn't actually save any comparison cycles in the common
- * case where the first key determines the comparison result.  Note that
- * for a pass-by-reference datatype, datum1 points into the "tuple" storage.
- *
- * There is one special case: when the sort support infrastructure provides an
- * "abbreviated key" representation, where the key is (typically) a pass by
- * value proxy for a pass by reference type.  In this case, the abbreviated key
- * is stored in datum1 in place of the actual first key column.
- *
- * When sorting single Datums, the data value is represented directly by
- * datum1/isnull1 for pass by value types (or null values).  If the datatype is
- * pass-by-reference and isnull1 is false, then "tuple" points to a separately
- * palloc'd data value, otherwise "tuple" is NULL.  The value of datum1 is then
- * either the same pointer as "tuple", or is an abbreviated key value as
- * described above.  Accordingly, "tuple" is always used in preference to
- * datum1 as the authoritative value for pass-by-reference cases.
- */
-typedef struct
-{
-	void	   *tuple;			/* the tuple itself */
-	Datum		datum1;			/* value of first key column */
-	bool		isnull1;		/* is first key column NULL? */
-	int			srctape;		/* source tape number */
-} SortTuple;
 
 /*
  * During merge, we use a pre-allocated set of fixed-size slots to hold
@@ -237,9 +197,6 @@ typedef enum
 #define MAXORDER		500		/* maximum merge order */
 #define TAPE_BUFFER_OVERHEAD		BLCKSZ
 #define MERGE_BUFFER_SIZE			(BLCKSZ * 32)
-
-typedef int (*SortTupleComparator) (const SortTuple *a, const SortTuple *b,
-									Tuplesortstate *state);
 
 /*
  * Private state of a Tuplesort operation.
@@ -618,9 +575,6 @@ struct Sharedsort
 	} while(0)
 
 
-static Tuplesortstate *tuplesort_begin_common(int workMem,
-											  SortCoordinate coordinate,
-											  int sortopt);
 static void tuplesort_begin_batch(Tuplesortstate *state);
 static void puttuple_common(Tuplesortstate *state, SortTuple *tuple);
 static bool consider_abort_common(Tuplesortstate *state);
@@ -843,7 +797,7 @@ qsort_tuple_int32_compare(SortTuple *a, SortTuple *b, Tuplesortstate *state)
  * sort options.  See TUPLESORT_* definitions in tuplesort.h
  */
 
-static Tuplesortstate *
+Tuplesortstate *
 tuplesort_begin_common(int workMem, SortCoordinate coordinate, int sortopt)
 {
 	Tuplesortstate *state;
@@ -2299,13 +2253,13 @@ tuplesort_performsort(Tuplesortstate *state)
 }
 
 /*
- * Internal routine to fetch the next tuple in either forward or back
+ * Routine to fetch the next tuple in either forward or back
  * direction into *stup.  Returns false if no more tuples.
  * Returned tuple belongs to tuplesort memory context, and must not be freed
  * by caller.  Note that fetched tuple is stored in memory that may be
  * recycled by any future fetch.
  */
-static bool
+bool
 tuplesort_gettuple_common(Tuplesortstate *state, bool forward,
 						  SortTuple *stup)
 {

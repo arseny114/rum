@@ -27,7 +27,9 @@
 
 #include "rum.h"				/* RumItem */
 
-#if PG_VERSION_NUM >= 150000
+#if PG_VERSION_NUM >= 160000
+#include "tuplesort16.c"
+#elif PG_VERSION_NUM >= 150000
 #include "tuplesort15.c"
 #elif PG_VERSION_NUM >= 140000
 #include "tuplesort14.c"

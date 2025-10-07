@@ -26,8 +26,7 @@ REGRESS = security rum rum_validate rum_hash ruminv timestamp \
 	int2 int4 int8 float4 float8 money oid \
 	time timetz date interval \
 	macaddr inet cidr text varchar char bytea bit varbit \
-	numeric rum_weight expr array rum_debug_funcs
-
+	numeric rum_weight expr array
 
 TAP_TESTS = 1
 
@@ -44,11 +43,6 @@ subdir = contrib/rum
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
-endif
-
-# rum_debug_funcs tests only for enterprise
-ifneq ($(PGPRO_EDITION), enterprise)
-	REGRESS := $(filter-out rum_debug_funcs, $(REGRESS))
 endif
 
 $(EXTENSION)--$(EXTVERSION).sql: rum_init.sql

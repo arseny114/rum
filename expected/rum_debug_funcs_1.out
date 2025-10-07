@@ -124,7 +124,7 @@ SELECT * FROM rum_page_opaque_info('test_without_addinfo_idx', 10);
 (1 row)
 
 SELECT * FROM rum_leaf_entry_page_items('test_without_addinfo_idx', 10);
- key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_postring_tree | postring_tree_root 
+ key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_posting_tree | posting_tree_root 
 -----+---------+------------------+----------+------------------+----------+------------------+--------------------
  b3  |       1 | RUM_CAT_NORM_KEY | (0,12)   | t                |          | f                |                   
  b3  |       1 | RUM_CAT_NORM_KEY | (2,17)   | t                |          | f                |                   
@@ -4812,7 +4812,7 @@ SELECT * FROM rum_page_opaque_info('test_with_addinfo_idx_false', 32);
 (1 row)
 
 SELECT * FROM rum_leaf_entry_page_items('test_with_addinfo_idx_false', 32);
- key | attrnum |     category     | tuple_id | add_info_is_null |            add_info             | is_postring_tree | postring_tree_root 
+ key | attrnum |     category     | tuple_id | add_info_is_null |            add_info             | is_posting_tree | posting_tree_root 
 -----+---------+------------------+----------+------------------+---------------------------------+------------------+--------------------
  b8  |       1 | RUM_CAT_NORM_KEY | (0,13)   | f                | Mon May 02 08:21:22.326724 2016 | f                |                   
  b8  |       1 | RUM_CAT_NORM_KEY | (1,2)    | f                | Tue May 03 02:21:22.326724 2016 | f                |                   
@@ -6083,7 +6083,7 @@ SELECT * FROM rum_page_opaque_info('test_with_addinfo_idx_true', 27);
 (1 row)
 
 SELECT * FROM rum_leaf_entry_page_items('test_with_addinfo_idx_true', 27);
- key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_postring_tree | postring_tree_root 
+ key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_posting_tree | posting_tree_root 
 -----+---------+------------------+----------+------------------+----------+------------------+--------------------
  b6  |       1 | RUM_CAT_NORM_KEY | (1,14)   | f                | 43       | f                |                   
  b6  |       1 | RUM_CAT_NORM_KEY | (26,10)  | f                | 43       | f                |                   
@@ -8893,7 +8893,7 @@ SELECT * FROM rum_page_opaque_info('test_with_weight_idx', 10);
 (1 row)
 
 SELECT * FROM rum_leaf_entry_page_items('test_with_weight_idx', 10);
-     key      | attrnum |      category      | tuple_id | add_info_is_null |  add_info  | is_postring_tree | postring_tree_root 
+     key      | attrnum |      category      | tuple_id | add_info_is_null |  add_info  | is_posting_tree | posting_tree_root 
 --------------+---------+--------------------+----------+------------------+------------+------------------+--------------------
  gather       |       1 | RUM_CAT_NORM_KEY   | (0,27)   | f                | 4A,14      | f                |                   
  gather       |       1 | RUM_CAT_NORM_KEY   | (1,36)   | f                | 4A,14      | f                |                   

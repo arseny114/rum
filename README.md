@@ -365,7 +365,7 @@ RUM (like GIN) on the internal pages of the entry tree packs the downward link a
 
 ```SQL
 SELECT * FROM rum_leaf_entry_page_items('rum_index', 10);
- key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_postring_tree | postring_tree_root
+ key | attrnum |     category     | tuple_id | add_info_is_null | add_info | is_posting_tree | posting_tree_root
 -----+---------+------------------+----------+------------------+----------+------------------+--------------------
  ay  |       1 | RUM_CAT_NORM_KEY | (0,16)   | t                |          | f                |
  ay  |       1 | RUM_CAT_NORM_KEY | (0,23)   | t                |          | f                |

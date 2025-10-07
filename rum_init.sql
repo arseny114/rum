@@ -1817,8 +1817,8 @@ RETURNS TABLE(
     tuple_id tid,
     add_info_is_null bool,
     add_info varchar,
-    is_postring_tree bool,
-    postring_tree_root int4
+    is_posting_tree bool,
+    posting_tree_root int4
 )
 AS $$
   SELECT *
@@ -1830,8 +1830,8 @@ AS $$
           tuple_id tid,
           add_info_is_null bool,
           add_info varchar,
-          is_postring_tree bool,
-          postring_tree_root int4
+          is_posting_tree bool,
+          posting_tree_root int4
       );
 $$ LANGUAGE sql;
 

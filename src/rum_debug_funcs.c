@@ -278,8 +278,8 @@ typedef RumPageItemsStateData *RumPageItemsState;
 static Relation
 get_rel_from_name(text *relName)
 {
-	RangeVar			*relrv;
-	Relation			rel;
+	RangeVar   *relrv;
+	Relation	rel;
 
 	relrv = makeRangeVarFromNameList(textToQualifiedNameList(relName));
 	rel = relation_openrv(relrv, AccessShareLock);
@@ -340,11 +340,11 @@ get_rel_from_name(text *relName)
 static Page
 get_rel_page(Relation rel, BlockNumber blkNo)
 {
-	bytea				*rawPage;
-	char				*rawPageData;
-	int					rawPageSize;
-	Buffer				buf;
-	Page				page;
+	bytea	   *rawPage;
+	char	   *rawPageData;
+	int			rawPageSize;
+	Buffer		buf;
+	Page		page;
 
 	if (blkNo >= RelationGetNumberOfBlocksInFork(rel, MAIN_FORKNUM))
 		ereport(ERROR,
@@ -471,9 +471,9 @@ check_page_is_internal_entry_page(RumPageOpaque opaq)
 static Datum
 get_datum_text_by_oid(Datum info, Oid infoId)
 {
-	Oid		funcId;
-	bool	isVarlena = false;
-	char	*infoStr;
+	Oid			funcId;
+	bool		isVarlena = false;
+	char	   *infoStr;
 
 	Assert(OidIsValid(infoId));
 
@@ -490,13 +490,13 @@ get_datum_text_by_oid(Datum info, Oid infoId)
 static Datum
 category_get_datum_text(RumNullCategory category)
 {
-	char categoryArr[][20] = {"RUM_CAT_NORM_KEY",
-							"RUM_CAT_NULL_KEY",
-							"RUM_CAT_EMPTY_ITEM",
-							"RUM_CAT_NULL_ITEM",
-							"RUM_CAT_EMPTY_QUERY"};
+	char		categoryArr[][20] = {"RUM_CAT_NORM_KEY",
+									 "RUM_CAT_NULL_KEY",
+									 "RUM_CAT_EMPTY_ITEM",
+									 "RUM_CAT_NULL_ITEM",
+									 "RUM_CAT_EMPTY_QUERY"};
 
-	switch(category)
+	switch (category)
 	{
 		case RUM_CAT_NORM_KEY:
 			return CStringGetTextDatum(categoryArr[0]);
@@ -525,9 +525,9 @@ category_get_datum_text(RumNullCategory category)
 static char
 pos_get_weight(WordEntryPos position)
 {
-	char res = 'D';
+	char		res = 'D';
 
-	switch(WEP_GETWEIGHT(position))
+	switch (WEP_GETWEIGHT(position))
 	{
 		case 3:
 			return 'A';
@@ -552,15 +552,15 @@ pos_get_weight(WordEntryPos position)
 static Datum
 get_positions_to_text_datum(Datum addInfo)
 {
-	bytea			*positions;
-	char			*ptrt;
-	WordEntryPos	position = 0;
-	int32			npos;
+	bytea	   *positions;
+	char	   *ptrt;
+	WordEntryPos position = 0;
+	int32		npos;
 
-	Datum			res;
-	char			*positionsStr;
-	char			*positionsStrCurPtr;
-	int				curMaxStrLenght;
+	Datum		res;
+	char	   *positionsStr;
+	char	   *positionsStrCurPtr;
+	int			curMaxStrLenght;
 
 	positions = DatumGetByteaP(addInfo);
 	ptrt = (char *) VARDATA_ANY(positions);
@@ -568,7 +568,7 @@ get_positions_to_text_datum(Datum addInfo)
 					 VARSIZE_ANY_EXHDR(positions));
 
 	/* Initialize the string */
-	positionsStr = (char*) palloc(POS_STR_BUF_LENGHT * sizeof(char));
+	positionsStr = (char *) palloc(POS_STR_BUF_LENGHT * sizeof(char));
 	positionsStr[0] = '\0';
 	curMaxStrLenght = POS_STR_BUF_LENGHT - 1;
 	positionsStrCurPtr = positionsStr;
@@ -580,32 +580,32 @@ get_positions_to_text_datum(Datum addInfo)
 		ptrt = decompress_pos(ptrt, &position);
 
 		/* Write this position and weight in the string */
-		if(pos_get_weight(position) == 'D')
-				sprintf(positionsStrCurPtr, "%d,", WEP_GETPOS(position));
-		else sprintf(positionsStrCurPtr, "%d%c,",
-				WEP_GETPOS(position), pos_get_weight(position));
+		if (pos_get_weight(position) == 'D')
+			sprintf(positionsStrCurPtr, "%d,", WEP_GETPOS(position));
+		else
+			sprintf(positionsStrCurPtr, "%d%c,",
+					WEP_GETPOS(position), pos_get_weight(position));
 
 		/* Moving the pointer forward */
 		positionsStrCurPtr += strlen(positionsStrCurPtr);
 
 		/*
-		 * Check that there is not too little left to the
-		 * end of the line and, if necessary, overspend
-		 * the memory.
+		 * Check that there is not too little left to the end of the line and,
+		 * if necessary, overspend the memory.
 		 */
-		if (curMaxStrLenght -
-			(positionsStrCurPtr - positionsStr) <= POS_MAX_VAL_LENGHT)
+		if (curMaxStrLenght - (positionsStrCurPtr - positionsStr)
+			<= POS_MAX_VAL_LENGHT)
 		{
-			curMaxStrLenght +=  POS_STR_BUF_LENGHT;
-			positionsStr = (char*) repalloc(positionsStr,
-									curMaxStrLenght * sizeof(char));
+			curMaxStrLenght += POS_STR_BUF_LENGHT;
+			positionsStr = (char *) repalloc(positionsStr,
+											 curMaxStrLenght * sizeof(char));
 			positionsStrCurPtr = positionsStr + strlen(positionsStr);
 		}
 	}
 
 	/*
-	 * Delete the last comma if there has
-	 * been at least one iteration of the loop
+	 * Delete the last comma if there has been at least one iteration of the
+	 * loop.
 	 */
 	if (npos > 0)
 		positionsStr[strlen(positionsStr) - 1] = '\0';
@@ -622,10 +622,10 @@ get_positions_to_text_datum(Datum addInfo)
 static Oid
 get_cur_tuple_key_oid(RumPageItemsState piState)
 {
-	Oid						result;
-	TupleDesc				origTupleDesc;
-	OffsetNumber			attnum;
-	FormData_pg_attribute	*attrs;
+	Oid			result;
+	TupleDesc	origTupleDesc;
+	OffsetNumber attnum;
+	FormData_pg_attribute *attrs;
 
 	attnum = piState->curKeyAttnum;
 	origTupleDesc = piState->rumState->origTupdesc;
@@ -642,17 +642,17 @@ get_cur_tuple_key_oid(RumPageItemsState piState)
 static void
 get_entry_index_tuple_values(RumPageItemsState piState)
 {
-	RumState *rumState = piState->rumState;
+	RumState   *rumState = piState->rumState;
 
 	/* Scanning the IndexTuple */
 	piState->curKeyAttnum =
 		rumtuple_get_attrnum(rumState,
-							piState->curItup);
+							 piState->curItup);
 
 	piState->curKey =
 		rumtuple_get_key(rumState,
-						piState->curItup,
-						&(piState->curKeyCategory));
+						 piState->curItup,
+						 &(piState->curKeyCategory));
 
 	piState->curKeyOid =
 		get_cur_tuple_key_oid(piState);
@@ -683,13 +683,14 @@ get_entry_index_tuple_values(RumPageItemsState piState)
 static void
 write_res_cur_tuple_key_to_values(RumPageItemsState piState)
 {
-	int						counter = 0;
+	int			counter = 0;
 
-	if(piState->curKeyCategory == RUM_CAT_NORM_KEY)
+	if (piState->curKeyCategory == RUM_CAT_NORM_KEY)
 		piState->values[counter++] =
 			get_datum_text_by_oid(piState->curKey,
-						piState->curKeyOid);
-	else piState->nulls[counter++] = true;
+								  piState->curKeyOid);
+	else
+		piState->nulls[counter++] = true;
 
 	piState->values[counter++] =
 		UInt16GetDatum(piState->curKeyAttnum);
@@ -713,12 +714,12 @@ write_res_cur_tuple_key_to_values(RumPageItemsState piState)
 static bool
 find_page_in_posting_tree(BlockNumber targetPageNum,
 						  BlockNumber curPageNum,
-						  RumState *rumState)
+						  RumState * rumState)
 {
-	Page				curPage;
-	RumPageOpaque		curOpaq;
-	PostingItem			curPitem;
-	BlockNumber			nextPageNum;
+	Page		curPage;
+	RumPageOpaque curOpaq;
+	PostingItem curPitem;
+	BlockNumber nextPageNum;
 
 	/* Page loop */
 	for (;;)
@@ -743,12 +744,11 @@ find_page_in_posting_tree(BlockNumber targetPageNum,
 		}
 
 		/*
-		 * Reading the first PostingItem from
-		 * the current page. This is necessary
-		 * to remember the link down.
+		 * Reading the first PostingItem from the current page. This is
+		 * necessary to remember the link down.
 		 */
 		memcpy(&curPitem,
-			RumDataPageGetItem(curPage, 1), sizeof(PostingItem));
+			   RumDataPageGetItem(curPage, 1), sizeof(PostingItem));
 		nextPageNum = PostingItemGetBlockNumber(&curPitem);
 
 		/* The loop that scans the page */
@@ -756,7 +756,7 @@ find_page_in_posting_tree(BlockNumber targetPageNum,
 		{
 			/* Reading the PostingItem from the current page */
 			memcpy(&curPitem,
-				RumDataPageGetItem(curPage, i), sizeof(PostingItem));
+				   RumDataPageGetItem(curPage, i), sizeof(PostingItem));
 
 			if (targetPageNum == PostingItemGetBlockNumber(&curPitem))
 			{
@@ -772,7 +772,8 @@ find_page_in_posting_tree(BlockNumber targetPageNum,
 			curPageNum = nextPageNum;
 
 		/* Step to the right */
-		else curPageNum = curOpaq->rightlink;
+		else
+			curPageNum = curOpaq->rightlink;
 
 		pfree(curPage);
 	}
@@ -792,11 +793,11 @@ find_posting_tree_root(BlockNumber *curPageNum,
 					   OffsetNumber *curTupleNum,
 					   OffsetNumber *curKeyAttnum,
 					   BlockNumber *postingRootNum,
-					   RumState *rumState)
+					   RumState * rumState)
 {
-	Page				curPage;
-	RumPageOpaque		curOpaq;
-	IndexTuple			curItup;
+	Page		curPage;
+	RumPageOpaque curOpaq;
+	IndexTuple	curItup;
 
 	for (;;)
 	{
@@ -804,7 +805,8 @@ find_posting_tree_root(BlockNumber *curPageNum,
 		curPage = get_rel_page(rumState->index, *curPageNum);
 
 		/* The page cannot be new */
-		if (PageIsNew(curPage)) break;
+		if (PageIsNew(curPage))
+			break;
 
 		/* Getting a page description from an opaque area */
 		curOpaq = RumPageGetOpaque(curPage);
@@ -830,10 +832,11 @@ find_posting_tree_root(BlockNumber *curPageNum,
 		}
 
 		/*
-		 * If haven't found anything, need to move on
-		 * or terminate the function if the pages are over.
+		 * If haven't found anything, need to move on or terminate the
+		 * function if the pages are over.
 		 */
-		if (curOpaq->rightlink == InvalidBlockNumber) break;
+		if (curOpaq->rightlink == InvalidBlockNumber)
+			break;
 		else
 		{
 			*curPageNum = curOpaq->rightlink;
@@ -858,16 +861,15 @@ find_posting_tree_root(BlockNumber *curPageNum,
 static BlockNumber
 find_min_entry_leaf_page(RumPageItemsState piState)
 {
-	RumState			*rumState = piState->rumState;
+	RumState   *rumState = piState->rumState;
 
 	/*
-	 * The page search starts from the first
-	 * internal page of the entry tree.
+	 * The page search starts from the first internal page of the entry tree.
 	 */
-	BlockNumber			curPageNum = 1;
-	Page				curPage;
-	RumPageOpaque		curOpaq;
-	IndexTuple			curItup;
+	BlockNumber curPageNum = 1;
+	Page		curPage;
+	RumPageOpaque curOpaq;
+	IndexTuple	curItup;
 
 	for (;;)
 	{
@@ -875,7 +877,8 @@ find_min_entry_leaf_page(RumPageItemsState piState)
 		curPage = get_rel_page(rumState->index, curPageNum);
 
 		/* The page cannot be new */
-		if (PageIsNew(curPage)) return InvalidOffsetNumber;
+		if (PageIsNew(curPage))
+			return InvalidOffsetNumber;
 
 		/* Getting a page description from an opaque area */
 		curOpaq = RumPageGetOpaque(curPage);
@@ -892,14 +895,14 @@ find_min_entry_leaf_page(RumPageItemsState piState)
 		{
 			/* Read the first IndexTuple */
 			curItup = (IndexTuple) PageGetItem(curPage,
-								PageGetItemId(curPage, 1));
+											   PageGetItemId(curPage, 1));
 
 			/* Step onto the child page */
 			curPageNum = RumGetDownlink(curItup);
 			pfree(curPage);
 		}
 
-		else /* Error case */
+		else					/* Error case */
 		{
 			pfree(curPage);
 			return InvalidBlockNumber;
@@ -928,36 +931,33 @@ find_min_entry_leaf_page(RumPageItemsState piState)
 static OffsetNumber
 find_attnum_posting_tree_key(RumPageItemsState piState)
 {
-	BlockNumber			targetPageNum = piState->pageNum;
-	RumState			*rumState = piState->rumState;
+	BlockNumber targetPageNum = piState->pageNum;
+	RumState   *rumState = piState->rumState;
 
-	/* Returned result*/
-	OffsetNumber		keyAttnum = InvalidOffsetNumber;
+	/* Returned result */
+	OffsetNumber keyAttnum = InvalidOffsetNumber;
 
 	/*
-	 * The page search starts from the first
-	 * internal page of the entry tree.
+	 * The page search starts from the first internal page of the entry tree.
 	 */
-	BlockNumber			curPageNum = 1;
-	OffsetNumber		curTupleNum = FirstOffsetNumber;
-	BlockNumber			postingRootNum = InvalidBlockNumber;
+	BlockNumber curPageNum = 1;
+	OffsetNumber curTupleNum = FirstOffsetNumber;
+	BlockNumber postingRootNum = InvalidBlockNumber;
 
 	/* Search for the leftmost leaf page of the entry tree */
 	curPageNum = find_min_entry_leaf_page(piState);
 
 	/*
-	 * At each iteration of the loop, we find the
-	 * root of the posting tree, then we search for
-	 * the desired page in this posting tree. The
-	 * loop ends when a page is found, or when
-	 * there is no longer a posting tree.
+	 * At each iteration of the loop, we find the root of the posting tree,
+	 * then we search for the desired page in this posting tree. The loop ends
+	 * when a page is found, or when there is no longer a posting tree.
 	 */
 	while (find_posting_tree_root(&curPageNum, &curTupleNum,
-			&keyAttnum, &postingRootNum, rumState))
+								  &keyAttnum, &postingRootNum, rumState))
 	{
 		if (postingRootNum == targetPageNum ||
 			find_page_in_posting_tree(targetPageNum,
-					postingRootNum, rumState))
+									  postingRootNum, rumState))
 			break;
 	}
 
@@ -971,23 +971,24 @@ find_attnum_posting_tree_key(RumPageItemsState piState)
  */
 static bool
 prepare_scan(text *relName, uint32 blkNo,
-			 RumPageItemsState *piState,
+			 RumPageItemsState * piState,
 			 FuncCallContext *srfFctx,
 			 pageTypeFlags pageType)
 {
-	Relation				rel;		/* needed to initialize the RumState structure */
+	Relation	rel;			/* needed to initialize the RumState structure */
 
-	Page					page;		/* the page to be scanned */
-	RumPageOpaque			opaq;		/* data from the opaque area of the page */
+	Page		page;			/* the page to be scanned */
+	RumPageOpaque opaq;			/* data from the opaque area of the page */
 
-	int						resSize;
+	int			resSize;
 
 	/* Getting rel by name and page by number */
 	rel = get_rel_from_name(relName);
 	page = get_rel_page(rel, blkNo);
 
 	/* The page cannot be new */
-	if (PageIsNew(page)) return false;
+	if (PageIsNew(page))
+		return false;
 
 	/* Checking the size of the opaque area of the page */
 	check_page_opaque_data_size(page);
@@ -1004,7 +1005,7 @@ prepare_scan(text *relName, uint32 blkNo,
 
 	relation_close(rel, AccessShareLock);
 
-	/*  Writing the page and page type into a long-lived structure */
+	/* Writing the page and page type into a long-lived structure */
 	(*piState)->srfFctx = srfFctx;
 	(*piState)->page = page;
 	(*piState)->pageNum = blkNo;
@@ -1020,40 +1021,38 @@ prepare_scan(text *relName, uint32 blkNo,
 	else if ((*piState)->pageType == LEAF_ENTRY_PAGE)
 		resSize = LEAF_ENTRY_PAGE_RES_SIZE;
 
-	else resSize = INTERNAL_ENTRY_PAGE_RES_SIZE;
+	else
+		resSize = INTERNAL_ENTRY_PAGE_RES_SIZE;
 
 	/* Allocating memory for arrays of results */
-	(*piState)->values = (Datum*) palloc(resSize * sizeof(Datum));
-	(*piState)->nulls = (bool*) palloc(resSize * sizeof(bool));
+	(*piState)->values = (Datum *) palloc(resSize * sizeof(Datum));
+	(*piState)->nulls = (bool *) palloc(resSize * sizeof(bool));
 
 	/*
-	 * Depending on the type of page, it performs the
-	 * necessary checks and writes the necessary data
-	 * into a long-lived structure.
+	 * Depending on the type of page, it performs the necessary checks and
+	 * writes the necessary data into a long-lived structure.
 	 */
 	if (RumIsDataPage(*piState))
 	{
 		if ((*piState)->pageType == LEAF_DATA_PAGE)
 			check_page_is_leaf_data_page(opaq);
 
-		else check_page_is_internal_data_page(opaq);
+		else
+			check_page_is_internal_data_page(opaq);
 
 		(*piState)->maxoff = opaq->maxoff;
 		(*piState)->itemPtr = RumDataPageGetData(page);
 
 		/*
-		 * If the scanned page belongs to a posting tree,
-		 * we do not know which key this posting tree was
-		 * built for. However, we need to know the attribute
-		 * number of the key in order to correctly determine
-		 * the type of additional information that can be
-		 * associated with it.
+		 * If the scanned page belongs to a posting tree, we do not know which
+		 * key this posting tree was built for. However, we need to know the
+		 * attribute number of the key in order to correctly determine the
+		 * type of additional information that can be associated with it.
 		 *
-		 * The find_attnum_posting_tree_key() function is used
-		 * to find the key attribute number. The function scans
-		 * the index and searches for the page we are scanning
-		 * in the posting tree, while remembering which key
-		 * this posting tree was built for.
+		 * The find_attnum_posting_tree_key() function is used to find the key
+		 * attribute number. The function scans the index and searches for the
+		 * page we are scanning in the posting tree, while remembering which
+		 * key this posting tree was built for.
 		 */
 		(*piState)->curKeyAttnum =
 			find_attnum_posting_tree_key(*piState);
@@ -1071,7 +1070,7 @@ prepare_scan(text *relName, uint32 blkNo,
 		}
 	}
 
-	else /* the entry tree page case */
+	else						/* The entry tree page case */
 	{
 		if ((*piState)->pageType == LEAF_ENTRY_PAGE)
 		{
@@ -1080,7 +1079,8 @@ prepare_scan(text *relName, uint32 blkNo,
 			(*piState)->needNewTuple = true;
 		}
 
-		else check_page_is_internal_entry_page(opaq);
+		else
+			check_page_is_internal_entry_page(opaq);
 
 		(*piState)->maxoff = PageGetMaxOffsetNumber(page);
 		(*piState)->curTupleNum = FirstOffsetNumber;
@@ -1102,14 +1102,15 @@ prepare_scan(text *relName, uint32 blkNo,
 static void
 data_page_get_next_result(RumPageItemsState piState)
 {
-	int						counter = 0;
+	int			counter = 0;
 
 	/* Before returning the result, need to reset the nulls array */
 	if (piState->pageType == LEAF_DATA_PAGE)
 		memset(piState->nulls, 0,
-		 LEAF_DATA_PAGE_RES_SIZE * sizeof(bool));
-	else memset(piState->nulls, 0,
-			 INTERNAL_DATA_PAGE_RES_SIZE * sizeof(bool));
+			   LEAF_DATA_PAGE_RES_SIZE * sizeof(bool));
+	else
+		memset(piState->nulls, 0,
+			   INTERNAL_DATA_PAGE_RES_SIZE * sizeof(bool));
 
 	Assert(RumIsDataPage(piState));
 
@@ -1121,8 +1122,8 @@ data_page_get_next_result(RumPageItemsState piState)
 	else if (piState->pageType == LEAF_DATA_PAGE)
 	{
 		/*
-		 * it is necessary for the correct reading of the
-		 * tid (see the function rumdatapageleafread())
+		 * it is necessary for the correct reading of the tid (see the
+		 * function rumdatapageleafread())
 		 */
 		if (piState->srfFctx->call_cntr == 1)
 			RumPrepareCurPitemToPostingList(piState);
@@ -1132,13 +1133,13 @@ data_page_get_next_result(RumPageItemsState piState)
 	}
 
 	/* Reading information from the internal data page */
-	else RumReadKeyDataPage(piState);
+	else
+		RumReadKeyDataPage(piState);
 
 	/* Write the read information into arrays of results */
 
 	/*
-	 * This means whether the result
-	 * tuple is the high key or not.
+	 * This means whether the result tuple is the high key or not.
 	 */
 	if (piState->srfFctx->call_cntr == 0)
 	{
@@ -1148,7 +1149,7 @@ data_page_get_next_result(RumPageItemsState piState)
 			piState->nulls[counter++] = true;
 	}
 
-	else /* if the result is not the high key */
+	else						/* If the result is not the high key */
 	{
 		piState->values[counter++] = BoolGetDatum(false);
 
@@ -1160,8 +1161,8 @@ data_page_get_next_result(RumPageItemsState piState)
 	RumWriteResAddInfoIsNullToValues(piState, counter++);
 
 	/*
-	 * Return of additional information depends on the
-	 * type of page and the type of additional information.
+	 * Return of additional information depends on the type of page and the
+	 * type of additional information.
 	 */
 	if (RumCurPitemAddInfoIsNormal(piState))
 	{
@@ -1175,7 +1176,8 @@ data_page_get_next_result(RumPageItemsState piState)
 				RumWriteResAddInfoToValues(piState, counter);
 		}
 
-		else /* If the page is internal or result is high key */
+		else					/* If the page is internal or result is high
+								 * key */
 		{
 			if (piState->curKeyAddInfoByval == false)
 				piState->values[counter] =
@@ -1187,7 +1189,8 @@ data_page_get_next_result(RumPageItemsState piState)
 	}
 
 	/* If no additional information is available */
-	else piState->nulls[counter] = true;
+	else
+		piState->nulls[counter] = true;
 
 	/* Forming the returned tuple */
 	RumPrepareResultTuple(piState);
@@ -1213,8 +1216,8 @@ entry_internal_page_get_next_result(RumPageItemsState piState)
 	get_entry_index_tuple_values(piState);
 
 	/*
-	 * On the rightmost page, in the last IndexTuple, there is a
-	 * high key, which is assumed to be equal to +inf.
+	 * On the rightmost page, in the last IndexTuple, there is a high key,
+	 * which is assumed to be equal to +inf.
 	 */
 	if (RumIsEntryInternalHighKey(piState))
 	{
@@ -1222,11 +1225,12 @@ entry_internal_page_get_next_result(RumPageItemsState piState)
 		piState->nulls[1] = true;
 		piState->nulls[2] = true;
 		piState->values[3] =
-		UInt32GetDatum(piState->curTupleDownLink);
+			UInt32GetDatum(piState->curTupleDownLink);
 	}
 
 	/* Is not high key */
-	else write_res_cur_tuple_key_to_values(piState);
+	else
+		write_res_cur_tuple_key_to_values(piState);
 
 	/* Forming the returned tuple */
 	RumPrepareResultTuple(piState);
@@ -1245,10 +1249,10 @@ static void
 get_entry_leaf_posting_list_result(RumPageItemsState piState)
 {
 	/*
-	 * Start writing from 3, because the previous
-	 * ones are occupied by a cur_tuple_key
+	 * Start writing from 3, because the previous ones are occupied by a
+	 * cur_tuple_key
 	 */
-	int						counter = 3;
+	int			counter = 3;
 
 	Assert(piState->pageType == LEAF_ENTRY_PAGE);
 
@@ -1269,20 +1273,21 @@ get_entry_leaf_posting_list_result(RumPageItemsState piState)
 			RumWriteResAddInfoToValues(piState, counter++);
 	}
 
-	else piState->nulls[counter++] = true;
+	else
+		piState->nulls[counter++] = true;
 
 	/* The current IndexTuple does not contain a posting tree */
 	piState->values[counter++] = BoolGetDatum(false);
 	piState->nulls[counter] = true;
 
 	/*
-	 * If the current IndexTuple has ended, i.e. we have scanned all
-	 * its RumItems, then we need to enable the need_new_tuple flag
-	 * so that the next time the function is called, we can read
-	 * a new IndexTuple from the page.
+	 * If the current IndexTuple has ended, i.e. we have scanned all its
+	 * RumItems, then we need to enable the need_new_tuple flag so that the
+	 * next time the function is called, we can read a new IndexTuple from the
+	 * page.
 	 */
 	piState->curTupleItemNum++;
-	if(piState->curTupleItemNum >
+	if (piState->curTupleItemNum >
 		RumGetNPosting(piState->curItup))
 		piState->needNewTuple = true;
 
@@ -1307,8 +1312,8 @@ prepare_new_entry_leaf_posting_list(RumPageItemsState piState)
 	piState->curTupleNum++;
 
 	/*
-	 * Every time you read a new IndexTuple, you need to reset the
-	 * tid for the rumDataPageLeafRead() function to work correctly.
+	 * Every time you read a new IndexTuple, you need to reset the tid for the
+	 * rumDataPageLeafRead() function to work correctly.
 	 */
 	RumPrepareCurPitemToPostingList(piState);
 }
@@ -1323,10 +1328,10 @@ static void
 get_entry_leaf_posting_tree_result(RumPageItemsState piState)
 {
 	/*
-	 * Start writing from 3, because the previous
-	 * ones are occupied by a cur_tuple_key
+	 * Start writing from 3, because the previous ones are occupied by a
+	 * cur_tuple_key
 	 */
-	int						counter = 3;
+	int			counter = 3;
 
 	Assert(piState->pageType == LEAF_ENTRY_PAGE);
 
@@ -1366,7 +1371,7 @@ entry_leaf_page_get_next_result(RumPageItemsState piState)
 	/* Before returning the result, need to reset the nulls array */
 	memset(piState->nulls, 0, LEAF_ENTRY_PAGE_RES_SIZE * sizeof(bool));
 
-	if(piState->needNewTuple)
+	if (piState->needNewTuple)
 	{
 		/* Read the new IndexTuple */
 		RumGetNewIndexTuple(piState);
@@ -1378,10 +1383,10 @@ entry_leaf_page_get_next_result(RumPageItemsState piState)
 		prepare_new_entry_leaf_posting_list(piState);
 
 		/*
-		 * The case when there is a posting tree
-		 * instead of a compressed posting list
+		 * The case when there is a posting tree instead of a compressed
+		 * posting list
 		 */
-		if(RumIsPostingTree(piState->curItup))
+		if (RumIsPostingTree(piState->curItup))
 		{
 			get_entry_leaf_posting_tree_result(piState);
 			return;
@@ -1401,26 +1406,25 @@ Datum
 rum_metapage_info(PG_FUNCTION_ARGS)
 {
 	/* Reading input arguments */
-	text				*relName = PG_GETARG_TEXT_PP(0);
-	uint32				blkNo = PG_GETARG_UINT32(1);
+	text	   *relName = PG_GETARG_TEXT_PP(0);
+	uint32		blkNo = PG_GETARG_UINT32(1);
 
-	Relation			rel;			/* needed to initialize the RumState structure */
+	Relation	rel;			/* needed to initialize the RumState structure */
 
-	RumPageOpaque		opaq;			/* data from the opaque area of the page */
-	RumMetaPageData		*metaData;		/* data stored on the meta page */
-	Page				page;			/* the page to be scanned */
+	RumPageOpaque opaq;			/* data from the opaque area of the page */
+	RumMetaPageData *metaData;	/* data stored on the meta page */
+	Page		page;			/* the page to be scanned */
 
-	TupleDesc			tupDesc;		/* description of the result tuple */
-	HeapTuple			resultTuple;	/* for the results */
-	Datum				values[10];		/* return values */
-	bool				nulls[10];		/* true if the corresponding value is NULL */
+	TupleDesc	tupDesc;		/* description of the result tuple */
+	HeapTuple	resultTuple;	/* for the results */
+	Datum		values[10];		/* return values */
+	bool		nulls[10];		/* true if the corresponding value is NULL */
 
 	/*
-	 * To output the index version.
-	 * If you change the index version, you
-	 * may need to increase the buffer size.
+	 * To output the index version. If you change the index version, you may
+	 * need to increase the buffer size.
 	 */
-	char				versionBuf[20];
+	char		versionBuf[20];
 
 	/* Only the superuser can use this */
 	check_superuser();
@@ -1455,8 +1459,8 @@ rum_metapage_info(PG_FUNCTION_ARGS)
 	/*
 	 * Writing data from metaData to values.
 	 *
-	 * The first five values are obsolete because the
-	 * pending list was removed from the rum index.
+	 * The first five values are obsolete because the pending list was removed
+	 * from the rum index.
 	 */
 	values[0] = Int64GetDatum(metaData->head);
 	values[1] = Int64GetDatum(metaData->tail);
@@ -1488,22 +1492,22 @@ Datum
 rum_page_opaque_info(PG_FUNCTION_ARGS)
 {
 	/* Reading input arguments */
-	text				*relName = PG_GETARG_TEXT_PP(0);
-	uint32				blkNo = PG_GETARG_UINT32(1);
+	text	   *relName = PG_GETARG_TEXT_PP(0);
+	uint32		blkNo = PG_GETARG_UINT32(1);
 
-	Relation			rel;			/* needed to initialize the RumState structure */
+	Relation	rel;			/* needed to initialize the RumState structure */
 
-	RumPageOpaque		opaq;			/* data from the opaque area of the page */
-	Page				page;			/* the page to be scanned */
+	RumPageOpaque opaq;			/* data from the opaque area of the page */
+	Page		page;			/* the page to be scanned */
 
-	HeapTuple			resultTuple;	/* for the results */
-	TupleDesc			tupDesc;		/* description of the result tuple */
+	HeapTuple	resultTuple;	/* for the results */
+	TupleDesc	tupDesc;		/* description of the result tuple */
 
-	Datum				values[5];		/* return values */
-	bool				nulls[5];		/* true if the corresponding value is NULL */
-	Datum				flags[16];		/* array with flags in text format */
-	int					nFlags = 0;		/* index in the array of flags */
-	uint16				flagBits;		/* flags in the opaque area of the page */
+	Datum		values[5];		/* return values */
+	bool		nulls[5];		/* true if the corresponding value is NULL */
+	Datum		flags[16];		/* array with flags in text format */
+	int			nFlags = 0;		/* index in the array of flags */
+	uint16		flagBits;		/* flags in the opaque area of the page */
 
 	/* Only the superuser can use this */
 	check_superuser();
@@ -1542,7 +1546,7 @@ rum_page_opaque_info(PG_FUNCTION_ARGS)
 	if (flagBits & RUM_LIST_FULLROW)
 		flags[nFlags++] = CStringGetTextDatum("list_fullrow");
 	flagBits &= ~(RUM_DATA | RUM_LEAF | RUM_DELETED | RUM_META | RUM_LIST |
-				RUM_LIST_FULLROW);
+				  RUM_LIST_FULLROW);
 	if (flagBits)
 	{
 		/* any flags we don't recognize are printed in hex */
@@ -1563,10 +1567,10 @@ rum_page_opaque_info(PG_FUNCTION_ARGS)
 	values[4] = PointerGetDatum(construct_array_builtin(flags, nFlags, TEXTOID));
 #elif PG_VERSION_NUM >= 130000
 	values[4] = PointerGetDatum(construct_array(flags, nFlags,
-								TEXTOID, -1, false, TYPALIGN_INT));
+												TEXTOID, -1, false, TYPALIGN_INT));
 #else
 	values[4] = PointerGetDatum(construct_array(flags, nFlags,
-								TEXTOID, -1, false, 'i'));
+												TEXTOID, -1, false, 'i'));
 #endif
 
 	pfree(page);
@@ -1590,31 +1594,30 @@ Datum
 rum_page_items_info(PG_FUNCTION_ARGS)
 {
 	/* Reading input arguments */
-	text				*relName = PG_GETARG_TEXT_PP(0);
-	uint32				blkNo = PG_GETARG_UINT32(1);
-	pageTypeFlags		pageType = PG_GETARG_UINT32(2);
+	text	   *relName = PG_GETARG_TEXT_PP(0);
+	uint32		blkNo = PG_GETARG_UINT32(1);
+	pageTypeFlags pageType = PG_GETARG_UINT32(2);
 
-	int					counter;
+	int			counter;
 
 	/*
-	 * The context of the function calls and the pointer
-	 * to the long-lived piState structure.
+	 * The context of the function calls and the pointer to the long-lived
+	 * piState structure.
 	 */
-	FuncCallContext				*fctx;
-	RumPageItemsStateData		*piState;
+	FuncCallContext *fctx;
+	RumPageItemsStateData *piState;
 
 	/* Only the superuser can use this */
 	check_superuser();
 
 	/*
-	 * In the case of the first function call, it is necessary
-	 * to get the page by its number and create a RumState
-	 * structure for scanning the page.
+	 * In the case of the first function call, it is necessary to get the page
+	 * by its number and create a RumState structure for scanning the page.
 	 */
 	if (SRF_IS_FIRSTCALL())
 	{
-		TupleDesc				tupDesc;	/* description of the result tuple */
-		MemoryContext			oldMctx;	/* the old function memory context */
+		TupleDesc	tupDesc;	/* description of the result tuple */
+		MemoryContext oldMctx;	/* the old function memory context */
 
 		/*
 		 * Initializing the FuncCallContext structure and switching the memory
@@ -1641,8 +1644,8 @@ rum_page_items_info(PG_FUNCTION_ARGS)
 		BlessTupleDesc(tupDesc);
 
 		/*
-		 * Save a pointer to a long-lived structure and
-		 * tuple descriptor for our result type in fctx.
+		 * Save a pointer to a long-lived structure and tuple descriptor for
+		 * our result type in fctx.
 		 */
 		fctx->user_fctx = piState;
 		fctx->tuple_desc = tupDesc;
@@ -1660,19 +1663,18 @@ rum_page_items_info(PG_FUNCTION_ARGS)
 	/* The counter is defined differently on different pages */
 	if (RumIsDataPage(piState))
 		counter = fctx->call_cntr;
-	else counter = piState->curTupleNum;
+	else
+		counter = piState->curTupleNum;
 
 	/*
 	 * Go through the page.
 	 *
-	 * In the case of scanning a Posting Tree page, the counter
-	 * is fctx->call_cntr, which is 0 on the first call. The
-	 * first call is special because it returns the high
-	 * key from the pages of the Posting Tree (the high
-	 * key is not counted in maxoff).
+	 * In the case of scanning a Posting Tree page, the counter is
+	 * fctx->call_cntr, which is 0 on the first call. The first call is
+	 * special because it returns the high key from the pages of the Posting
+	 * Tree (the high key is not counted in maxoff).
 	 *
-	 * On Entry tree pages, the high key is stored in
-	 * the IndexTuple.
+	 * On Entry tree pages, the high key is stored in the IndexTuple.
 	 */
 	if (counter <= piState->maxoff)
 	{
@@ -1682,7 +1684,8 @@ rum_page_items_info(PG_FUNCTION_ARGS)
 		else if (piState->pageType == LEAF_ENTRY_PAGE)
 			entry_leaf_page_get_next_result(piState);
 
-		else entry_internal_page_get_next_result(piState);
+		else
+			entry_internal_page_get_next_result(piState);
 
 		/* Returning the result of the current call */
 		SRF_RETURN_NEXT(fctx, piState->result);

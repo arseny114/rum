@@ -340,9 +340,6 @@ get_rel_from_name(text *relName)
 static Page
 get_rel_page(Relation rel, BlockNumber blkNo)
 {
-	bytea	   *rawPage;
-	char	   *rawPageData;
-	int			rawPageSize;
 	Buffer		buf;
 	Page		page;
 
@@ -352,35 +349,18 @@ get_rel_page(Relation rel, BlockNumber blkNo)
 				 errmsg("block number %u is out of range for relation \"%s\"",
 						blkNo, RelationGetRelationName(rel))));
 
-	/* Initialize buffer to copy to */
-	rawPage = (bytea *) palloc(BLCKSZ + VARHDRSZ);
-	SET_VARSIZE(rawPage, BLCKSZ + VARHDRSZ);
-	rawPageData = VARDATA(rawPage);
-
-	/* Take a verbatim copy of the page */
 	buf = ReadBufferExtended(rel, MAIN_FORKNUM, blkNo, RBM_NORMAL, NULL);
-	LockBuffer(buf, BUFFER_LOCK_SHARE);
-
-	memcpy(rawPageData, BufferGetPage(buf), BLCKSZ);
-
-	LockBuffer(buf, BUFFER_LOCK_UNLOCK);
-	ReleaseBuffer(buf);
-
-	rawPageSize = VARSIZE_ANY_EXHDR(rawPage);
-
-	if (rawPageSize != BLCKSZ)
+	if (!BufferIsValid(buf))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("invalid page size"),
-				 errdetail("Expected %d bytes, got %d.",
-						   BLCKSZ, rawPageSize)));
+				 errmsg("could not read block %u of relation \"%s\"",
+						blkNo, RelationGetRelationName(rel))));
 
-	page = palloc(rawPageSize);
-
-	memcpy(page, VARDATA_ANY(rawPage), rawPageSize);
-
-	/* Cleaning the memory that raw_page occupies */
-	pfree(rawPage);
+	LockBuffer(buf, BUFFER_LOCK_SHARE);
+	page = (Page) palloc(BLCKSZ);
+	memcpy(page, BufferGetPage(buf), BLCKSZ);
+	LockBuffer(buf, BUFFER_LOCK_UNLOCK);
+	ReleaseBuffer(buf);
 
 	return page;
 }

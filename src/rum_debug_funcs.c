@@ -526,8 +526,8 @@ pos_get_weight(WordEntryPos position)
  * which the positions of the lexemes are recorded.
  */
 
-#define POS_STR_BUF_LENGHT 1024
-#define POS_MAX_VAL_LENGHT 6
+#define POS_STR_BUF_LENGTH 1024
+#define POS_MAX_VAL_LENGTH 16
 
 static Datum
 get_positions_to_text_datum(Datum addInfo)
@@ -548,9 +548,9 @@ get_positions_to_text_datum(Datum addInfo)
 					 VARSIZE_ANY_EXHDR(positions));
 
 	/* Initialize the string */
-	positionsStr = (char *) palloc(POS_STR_BUF_LENGHT * sizeof(char));
+	positionsStr = (char *) palloc(POS_STR_BUF_LENGTH * sizeof(char));
 	positionsStr[0] = '\0';
-	curMaxStrLenght = POS_STR_BUF_LENGHT - 1;
+	curMaxStrLenght = POS_STR_BUF_LENGTH - 1;
 	positionsStrCurPtr = positionsStr;
 
 	/* Extract the positions of the lexemes and put them in the string */
@@ -574,9 +574,9 @@ get_positions_to_text_datum(Datum addInfo)
 		 * if necessary, overspend the memory.
 		 */
 		if (curMaxStrLenght - (positionsStrCurPtr - positionsStr)
-			<= POS_MAX_VAL_LENGHT)
+			<= POS_MAX_VAL_LENGTH)
 		{
-			curMaxStrLenght += POS_STR_BUF_LENGHT;
+			curMaxStrLenght += POS_STR_BUF_LENGTH;
 			positionsStr = (char *) repalloc(positionsStr,
 											 curMaxStrLenght * sizeof(char));
 			positionsStrCurPtr = positionsStr + strlen(positionsStr);

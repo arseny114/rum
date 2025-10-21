@@ -4,6 +4,9 @@ use PostgreSQL::Test::Cluster;
 use PostgreSQL::Test::Utils;
 use Test::More;
 
+# See storage/block.h
+my $invalid_block_number = '4294967295';
+
 # The function finds the leftmost leaf page of the Entry Tree.
 # To do this, starting from the first page, it goes down the tree to the leaf.
 sub find_min_leaf_entry_page
@@ -44,7 +47,7 @@ sub find_root_posting_tree
 {
 	my ($idx_name, $cur_page_num, $node) = @_;
 
-	while ($cur_page_num ne '4294967295')
+	while ($cur_page_num ne $invalid_block_number)
 	{
 		my $posting_tree_root = $node->safe_psql(
 			"postgres", qq{
@@ -207,7 +210,7 @@ $opaque_meta = $node->safe_psql(
 	"postgres", qq{
 	SELECT rightlink FROM rum_page_opaque_info('test_rum_idx_false', 0);
 });
-ok($opaque_meta eq '4294967295',
+ok($opaque_meta eq $invalid_block_number,
 	qq{InvalidBlockNumber should be equal to '4294967295'});
 
 # Testing the rum_internal_entry_page_items() function.

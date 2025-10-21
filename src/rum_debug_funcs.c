@@ -334,8 +334,7 @@ get_rel_from_name(text *relName)
 }
 
 /*
- * This function is used to get
- * a copy of the relation page.
+ * Get a copy of the relation page.
  */
 static Page
 get_rel_page(Relation rel, BlockNumber blkNo)
@@ -625,29 +624,22 @@ get_entry_index_tuple_values(RumPageItemsState piState)
 	RumState   *rumState = piState->rumState;
 
 	/* Scanning the IndexTuple */
-	piState->curKeyAttnum =
-		rumtuple_get_attrnum(rumState,
-							 piState->curItup);
+	piState->curKeyAttnum = rumtuple_get_attrnum(rumState, piState->curItup);
 
-	piState->curKey =
-		rumtuple_get_key(rumState,
-						 piState->curItup,
-						 &(piState->curKeyCategory));
+	piState->curKey = rumtuple_get_key(rumState,
+									   piState->curItup,
+									   &(piState->curKeyCategory));
 
-	piState->curKeyOid =
-		get_cur_tuple_key_oid(piState);
+	piState->curKeyOid = get_cur_tuple_key_oid(piState);
 
 	if (piState->pageType == INTERNAL_ENTRY_PAGE)
-		piState->curTupleDownLink =
-			RumGetDownlink(piState->curItup);
+		piState->curTupleDownLink = RumGetDownlink(piState->curItup);
 
 	if (piState->pageType == LEAF_ENTRY_PAGE &&
 		RumGetAddInfoAttr(piState))
 	{
-		(piState)->curKeyAddInfoOid =
-			RumGetAddInfoAttr(piState)->atttypid;
-		(piState)->curKeyAddInfoByval =
-			RumGetAddInfoAttr(piState)->attbyval;
+		(piState)->curKeyAddInfoOid = RumGetAddInfoAttr(piState)->atttypid;
+		(piState)->curKeyAddInfoByval = RumGetAddInfoAttr(piState)->attbyval;
 	}
 }
 
@@ -666,21 +658,18 @@ write_res_cur_tuple_key_to_values(RumPageItemsState piState)
 	int			counter = 0;
 
 	if (piState->curKeyCategory == RUM_CAT_NORM_KEY)
-		piState->values[counter++] =
-			get_datum_text_by_oid(piState->curKey,
-								  piState->curKeyOid);
+		piState->values[counter++] = get_datum_text_by_oid(piState->curKey,
+														   piState->curKeyOid);
 	else
 		piState->nulls[counter++] = true;
 
-	piState->values[counter++] =
-		UInt16GetDatum(piState->curKeyAttnum);
+	piState->values[counter++] = UInt16GetDatum(piState->curKeyAttnum);
 
 	piState->values[counter++] =
 		category_get_datum_text(piState->curKeyCategory);
 
 	if (piState->pageType == INTERNAL_ENTRY_PAGE)
-		piState->values[counter] =
-			UInt32GetDatum(piState->curTupleDownLink);
+		piState->values[counter] = UInt32GetDatum(piState->curTupleDownLink);
 }
 
 /*
@@ -891,21 +880,15 @@ find_min_entry_leaf_page(RumPageItemsState piState)
 }
 
 /*
- * In the case of scanning a posting tree page, we
- * do not know the key for which this posting tree
- * was built (as well as the key attribute number).
- * This function finds the attribute number of the
- * key for which the posting tree was built.
+ * When scanning a posting tree page, the key used to build the posting tree and
+ * the corresponding attribute number are not known. This function determines
+ * the attribute number of the key for which the posting tree was built.
  *
- * First, the function descends to the leftmost
- * leaf page of the entry tree, after which it
- * searches for links to the posting tree there and
- * searches in each posting tree for the number of
- * the page we are scanning. If the page you are
- * looking for is found, then you need to return
- * the key attribute number that was contained in
- * the IndexTuple along with the link to the posting
- * tree. If nothing is found, the function returns
+ * First, the function descends to the leftmost leaf page of the entry tree,
+ * then searches for links to the posting tree there. In each posting tree,
+ * it searches for the page number being scanned. If the desired page is found,
+ * it returns the key attribute number contained in the IndexTuple, along with
+ * a reference to the posting tree. If nothing is found, the function returns
  * InvalidOffsetNumber.
  */
 static OffsetNumber
@@ -1034,8 +1017,7 @@ prepare_scan(text *relName, uint32 blkNo,
 		 * page we are scanning in the posting tree, while remembering which
 		 * key this posting tree was built for.
 		 */
-		(*piState)->curKeyAttnum =
-			find_attnum_posting_tree_key(*piState);
+		(*piState)->curKeyAttnum = find_attnum_posting_tree_key(*piState);
 
 		/* Error handling find_attnum_posting_tree_key() */
 		if ((*piState)->curKeyAttnum == InvalidOffsetNumber)
@@ -1160,9 +1142,7 @@ data_page_get_next_result(RumPageItemsState piState)
 								 * key */
 		{
 			if (piState->curKeyAddInfoByval == false)
-				piState->values[counter] =
-					CStringGetTextDatum(VARLENA_MSG);
-
+				piState->values[counter] = CStringGetTextDatum(VARLENA_MSG);
 			else
 				RumWriteResAddInfoToValues(piState, counter);
 		}
@@ -1204,8 +1184,7 @@ entry_internal_page_get_next_result(RumPageItemsState piState)
 		piState->values[0] = CStringGetTextDatum("+inf");
 		piState->nulls[1] = true;
 		piState->nulls[2] = true;
-		piState->values[3] =
-			UInt32GetDatum(piState->curTupleDownLink);
+		piState->values[3] = UInt32GetDatum(piState->curTupleDownLink);
 	}
 
 	/* Is not high key */
@@ -1220,10 +1199,10 @@ entry_internal_page_get_next_result(RumPageItemsState piState)
 }
 
 /*
- * The Entry Tree leaf pages contain IndexTuples that contain
+ * The Entry Tree leaf pages contain IndexTuples containing
  * the key and either a compressed posting list or a link to
  * the root page of the Posting Tree. This function reads all
- * the values from posting list and generates the result tuple.
+ * values from posting list and generates the result tuple.
  */
 static void
 get_entry_leaf_posting_list_result(RumPageItemsState piState)
@@ -1285,8 +1264,7 @@ prepare_new_entry_leaf_posting_list(RumPageItemsState piState)
 	Assert(piState->pageType == LEAF_ENTRY_PAGE);
 
 	/* Getting the posting list */
-	piState->itemPtr =
-		RumGetPosting(piState->curItup);
+	piState->itemPtr = RumGetPosting(piState->curItup);
 	piState->curTupleItemNum = 1;
 	piState->needNewTuple = false;
 	piState->curTupleNum++;
@@ -1299,10 +1277,10 @@ prepare_new_entry_leaf_posting_list(RumPageItemsState piState)
 }
 
 /*
- * The Entry Tree leaf pages contain IndexTuples that contain
+ * The Entry Tree leaf pages contain IndexTuples containing
  * the key and either a compressed posting list or a link to
  * the root page of the Posting Tree. This function reads all
- * the values from Posting Tree and generates the result tuple.
+ * values from Posting Tree and generates the result tuple.
  */
 static void
 get_entry_leaf_posting_tree_result(RumPageItemsState piState)
@@ -1563,11 +1541,11 @@ rum_page_opaque_info(PG_FUNCTION_ARGS)
 }
 
 /*
- * The main universal function that is used to scan
- * all types of pages (except for the meta page).
- * There are four SQL wrappers made around this
- * function, each of which scans a specific type
- * of pages. pageType is used to select the type
+ * The main universal function used to scan all
+ * page types (except for the meta page). There
+ * are four SQL wrappers around this function,
+ * each of which scans a specific page type. The
+ * page_type argument is used to select the type
  * of page to scan.
  */
 Datum
@@ -1649,10 +1627,10 @@ rum_page_items_info(PG_FUNCTION_ARGS)
 	/*
 	 * Go through the page.
 	 *
-	 * In the case of scanning a Posting Tree page, the counter is
-	 * fctx->call_cntr, which is 0 on the first call. The first call is
-	 * special because it returns the high key from the pages of the Posting
-	 * Tree (the high key is not counted in maxoff).
+	 * When scanning a Posting Tree page, the counter is fctx->call_cntr,
+	 * which is 0 on the first call. The first call is special because it
+	 * returns the high key from the pages of the Posting Tree (the high key
+	 * is not counted in maxoff).
 	 *
 	 * On Entry tree pages, the high key is stored in the IndexTuple.
 	 */

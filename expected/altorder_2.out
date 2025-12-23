@@ -599,7 +599,7 @@ SELECT * FROM test_table WHERE tsv @@ (to_tsquery('wordA')) AND (folder = 10::bi
                                  QUERY PLAN                                 
 ----------------------------------------------------------------------------
  Seq Scan on test_table
-   Disabled Nodes: 1
+   Disabled: true
    Filter: ((folder = '10'::bigint) AND (tsv @@ to_tsquery('wordA'::text)))
 (3 rows)
 
@@ -617,12 +617,11 @@ SELECT * FROM test_table WHERE tsv @@ (to_tsquery('wordA')) AND (folder = 10::bi
                                     QUERY PLAN                                    
 ----------------------------------------------------------------------------------
  Sort
-   Disabled Nodes: 1
    Sort Key: (("time" <=| '500'::bigint))
    ->  Seq Scan on test_table
-         Disabled Nodes: 1
+         Disabled: true
          Filter: ((folder = '10'::bigint) AND (tsv @@ to_tsquery('wordA'::text)))
-(6 rows)
+(5 rows)
 
 SELECT * FROM test_table WHERE tsv @@ (to_tsquery('wordA')) AND (folder = 10::bigint) ORDER BY time <=| 500::bigint;
  id | folder | time |    tsv    

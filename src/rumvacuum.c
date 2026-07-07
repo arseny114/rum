@@ -41,17 +41,17 @@ typedef struct
  */
 
 static OffsetNumber
-rumVacuumPostingList(RumVacuumState * gvs, OffsetNumber attnum, Pointer src,
-					 OffsetNumber nitem, Pointer *cleaned,
+rumVacuumPostingList(RumVacuumState * gvs, OffsetNumber attnum, char *src,
+					 OffsetNumber nitem, char **cleaned,
 					 Size size, Size *newSize)
 {
 	OffsetNumber i,
 				j = 0;
 	RumItem		item;
 	ItemPointerData prevIptr;
-	Pointer		dst = NULL,
-				prev,
-				ptr = src;
+	char		*dst = NULL,
+				*prev,
+				*ptr = src;
 
 	*newSize = 0;
 	RumItemPointerSetMin(&item.iptr);
@@ -241,7 +241,7 @@ rumVacuumPostingTreeLeaves(RumVacuumState * gvs, OffsetNumber attnum,
 	{
 		OffsetNumber newMaxOff,
 					oldMaxOff = RumPageGetOpaque(page)->maxoff;
-		Pointer		cleaned = NULL;
+		char		*cleaned = NULL;
 		Size		newSize;
 
 		newMaxOff = rumVacuumPostingList(gvs, attnum,
@@ -594,7 +594,7 @@ rumVacuumEntryPage(RumVacuumState * gvs, Buffer buffer, BlockNumber *roots, Offs
 			 * place
 			 */
 			Size		cleanedSize;
-			Pointer		cleaned = NULL;
+			char		*cleaned = NULL;
 			uint32		newN =
 			rumVacuumPostingList(gvs, rumtuple_get_attrnum(&gvs->rumstate, itup),
 						 RumGetPosting(itup), RumGetNPosting(itup), &cleaned,

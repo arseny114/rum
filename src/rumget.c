@@ -659,16 +659,15 @@ restartScanEntry:
 
 			PredicateLockPage(rumstate->index, BufferGetBlockNumber(entry->buffer), snapshot);
 
-			/*
-			 * We keep buffer pinned because we need to prevent deletion of
-			 * page during scan. See RUM's vacuum implementation. RefCount is
-			 * increased to keep buffer pinned after freeRumBtreeStack() call.
-			 */
 			page = BufferGetPage(entry->buffer);
 			entry->predictNumberResult = gdi->stack->predictNumber * RumPageGetOpaque(page)->maxoff;
 
 			/*
-			 * Keep page content in memory to prevent durable page locking
+			 * Copy page content into memory so we can unlock the buffer.
+			 * Allocate enough space for any leaf page: maxoff can never
+			 * exceed BLCKSZ, so BLCKSZ * sizeof(RumItem) is a safe upper
+			 * bound.  The buffer is reused by entryGetNextItem() when
+			 * traversing to subsequent pages of the posting tree.
 			 */
 			entry->list = (RumItem *) palloc(BLCKSZ * sizeof(RumItem));
 			maxoff = RumPageGetOpaque(page)->maxoff;
@@ -1059,6 +1058,24 @@ entryGetNextItem(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 	}
 }
 
+/*
+ * Load the next batch of items into entry->list during a RumFullScan.
+ *
+ * Reads the next IndexTuple from the current leaf page of the entry tree
+ * (the IndexTuple contains either a posting list or a posting tree) and loads
+ * its items into entry->list.
+ *
+ * The entry must be the hidden EVERYTHING entry used to drive a full-index scan
+ * (i.e. it has entry->stack set, searchMode == GIN_SEARCH_MODE_EVERYTHING, and
+ * scanWithAddInfo == true).  On entry, isFinished must be false (there may be
+ * more IndexTuples with data to return), entry->stack->buffer must point to the
+ * current leaf page of the entry tree, and entry->stack->off must point to the
+ * IndexTuple from which to load the next batch.
+ *
+ * Returns false if the entry tree is exhausted (reached the rightmost page or
+ * a different attribute number), true if a new batch was successfully loaded
+ * into entry->list.
+ */
 static bool
 entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 {
@@ -1066,22 +1083,22 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 	IndexTuple	itup;
 	RumBtreeData btree;
 	bool		needUnlock;
+	bool		skipCurItem = false;
 
 	Assert(!entry->isFinished);
 	Assert(entry->stack);
 	Assert(ScanDirectionIsForward(entry->scanDirection));
+	Assert(entry->strategy == InvalidStrategy);
+	Assert(entry->searchMode == GIN_SEARCH_MODE_EVERYTHING);
+	Assert(entry->scanWithAddInfo == true);
 
-	entry->buffer = InvalidBuffer;
-	RumItemSetMin(&entry->curItem);
-	entry->offset = InvalidOffsetNumber;
-	entry->list = NULL;
-	entry->nlist = 0;
+	/* Clearing the hidden entry to load information from the next IndexTuple. */
 	if (entry->gdi)
 	{
 		freeRumBtreeStack(entry->gdi->stack);
 		pfree(entry->gdi);
+		entry->gdi = NULL;
 	}
-	entry->gdi = NULL;
 	if (entry->list)
 	{
 		pfree(entry->list);
@@ -1091,42 +1108,48 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 	entry->matchSortstate = NULL;
 	entry->reduceResult = false;
 	entry->predictNumberResult = 0;
+	entry->buffer = InvalidBuffer;
+	entry->offset = InvalidOffsetNumber;
+	RumItemSetMin(&entry->curItem);
 
+	/* Preparing to move through the entry tree. */
 	rumPrepareEntryScan(&btree, entry->attnum,
 						entry->queryKey, entry->queryCategory,
 						rumstate);
-
 	LockBuffer(entry->stack->buffer, RUM_SHARE);
+	needUnlock = true;
+
 	/*
-	 * stack->off points to the interested entry, buffer is already locked
+	 * Step to the next page if necessary (if the IndexTuple for the current
+	 * page has ended, or if a concurrency insertion has caused the current
+	 * page to split).
 	 */
 	if (!moveRightIfItNeeded(&btree, entry->stack))
 	{
 		ItemPointerSetInvalid(&entry->curItem.iptr);
 		entry->isFinished = true;
 		LockBuffer(entry->stack->buffer, RUM_UNLOCK);
+		needUnlock = false;
 		return false;
 	}
 
+	/* Now stack->off points to the interested entry, buffer is already locked. */
 	page = BufferGetPage(entry->stack->buffer);
 	itup = (IndexTuple) PageGetItem(page, PageGetItemId(page,
 													entry->stack->off));
-	needUnlock = true;
 
-	/*
-	 * If tuple stores another attribute then stop scan
-	 */
+	/* If tuple stores another attribute then stop scan. */
 	if (rumtuple_get_attrnum(btree.rumstate, itup) != entry->attnum)
 	{
 		ItemPointerSetInvalid(&entry->curItem.iptr);
 		entry->isFinished = true;
 		LockBuffer(entry->stack->buffer, RUM_UNLOCK);
+		needUnlock = false;
 		return false;
 	}
 
-	/*
-	 * OK, we want to return the TIDs listed in this entry.
-	 */
+	/* OK, we want to return the TIDs listed in this entry. */
+
 	if (RumIsPostingTree(itup))
 	{
 		BlockNumber rootPostingTree = RumGetPostingTree(itup);
@@ -1147,26 +1170,29 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 		 */
 		LockBuffer(entry->stack->buffer, RUM_UNLOCK);
 		needUnlock = false;
+
+		/* Preparing to move through the posting tree (in full scan mode). */
 		gdi = rumPrepareScanPostingTree(rumstate->index,
 						rootPostingTree, true, entry->scanDirection,
 						entry->attnumOrig, rumstate);
 
+		/* Find the leftmost leaf page. */
 		entry->buffer = rumScanBeginPostingTree(gdi, NULL);
 		entry->gdi = gdi;
 
-		PredicateLockPage(rumstate->index, BufferGetBlockNumber(entry->buffer), snapshot);
+		PredicateLockPage(rumstate->index,
+						  BufferGetBlockNumber(entry->buffer), snapshot);
 
-		/*
-		 * We keep buffer pinned because we need to prevent deletion of
-		 * page during scan. See RUM's vacuum implementation. RefCount is
-		 * increased to keep buffer pinned after freeRumBtreeStack() call.
-		 */
 		page = BufferGetPage(entry->buffer);
 		entry->predictNumberResult = gdi->stack->predictNumber *
 										RumPageGetOpaque(page)->maxoff;
 
 		/*
-		 * Keep page content in memory to prevent durable page locking
+		 * Copy page content into memory so we can unlock the buffer.
+		 * Allocate enough space for any leaf page: maxoff can never
+		 * exceed BLCKSZ, so BLCKSZ * sizeof(RumItem) is a safe upper
+		 * bound.  The buffer is reused by entryGetNextItem() when
+		 * traversing to subsequent pages of the posting tree.
 		 */
 		entry->list = (RumItem *) palloc(BLCKSZ * sizeof(RumItem));
 		maxoff = RumPageGetOpaque(page)->maxoff;
@@ -1174,6 +1200,7 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 
 		ptr = RumDataPageGetData(page);
 
+		/* Copying data from the leaf page of the posting tree to entry->list. */
 		for (i = FirstOffsetNumber; i <= maxoff; i = OffsetNumberNext(i))
 		{
 			ptr = rumDataPageLeafRead(ptr, entry->attnum, &item, true,
@@ -1193,7 +1220,7 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 		if (entry->nlist == 0)
 		{
 			entryGetNextItem(rumstate, entry, snapshot);
-			goto entry_done;
+			skipCurItem = true;
 		}
 	}
 	else if (RumGetNPosting(itup) > 0)
@@ -1210,21 +1237,23 @@ entryGetNextItemList(RumState * rumstate, RumScanEntry entry, Snapshot snapshot)
 	{
 		ItemPointerSetInvalid(&entry->curItem.iptr);
 		entry->isFinished = true;
-		goto entry_done;
+		skipCurItem = true;
 	}
 
-	Assert(entry->nlist > 0 && entry->list);
-
-	entry->curItem = entry->list[entry->offset];
-	entry->offset += entry->scanDirection;
-
-entry_done:
+	/*
+	 * Skip setting curItem from entry->list if it was already set by
+	 * a sub-call (e.g. entryGetNextItem) or if the entry is finished.
+	 */
+	if (!skipCurItem)
+	{
+		Assert(entry->nlist > 0 && entry->list);
+		entry->curItem = entry->list[entry->offset];
+		entry->offset += entry->scanDirection;
+	}
 
 	SCAN_ENTRY_GET_KEY(entry, rumstate, itup);
 
-	/*
-	 * Done with this entry, go to the next for the future.
-	 */
+	/* Done with this entry, go to the next for the future. */
 	entry->stack->off++;
 
 	if (needUnlock)
